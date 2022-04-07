@@ -1,0 +1,21 @@
+{
+    "name": "nfservice/laravel-helpers",
+    "description": "Biblioteca que contem os helpers laravel desenvolvidos pela NFService",
+    "type": "library",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Diego Almeida",
+            "email": "diego.feres82@gmail.com"
+        }
+    ],
+    "autoload": {
+        "files": [
+            "src/helpers.php"
+        ]
+    },
+    "minimum-stability": "dev",
+    "require": {
+        "box/spout": "^3.3"
+    }
+}

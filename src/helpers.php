@@ -1300,7 +1300,7 @@ if (!function_exists('readDigitableLine')) {
         }
 
 
-        if ($type === 'consumo' && ((($digitoD != calculaDACMod10($campoD) || in_array(substr($campoA, 2, 1), ['6', '7'])) && $digitoGeral != calculaDACMod10(substr($campoA, 0, 3).substr($campoA, 4).$campoB.$campoC.$campoD)) || in_array(substr($campoA, 2, 1), ['8', '9']) && $digitoGeral != calculaDACMod11(substr($campoA, 0, 3).substr($campoA, 4).$campoB.$campoC.$campoD))) {
+        if ($type === 'consumo' && ((($digitoD != calculaDACMod10($campoD) || in_array(substr($campoA, 2, 1), ['6', '7'])) && $digitoGeral != calculaDACMod10(substr($campoA, 0, 3).substr($campoA, 4).$campoB.$campoC.$campoD)) || (in_array(substr($campoA, 2, 1), ['8', '9']) && $digitoGeral != calculaDACMod11(substr($campoA, 0, 3).substr($campoA, 4).$campoB.$campoC.$campoD)))) {
             return [
                 'status' => false,
                 'error' => 'Número do boleto é inválido!'
@@ -1376,5 +1376,104 @@ if (!function_exists('formatBarcodeToDigitableLine')) {
         }
 
         return $digitable_line;
+    }
+}
+
+if (!function_exists('formatJsonString')) {
+    /**
+     * Função resposável por retornar os dados de json formatados
+     *
+     * @param string|array|object $data Dados a serem formatados
+     * @param int $step Posição de identação
+     *
+     * @access public
+     * @return string
+     */
+    function formatJsonString($data, int $step = 1, $br = "\r\n")
+    {
+        if (is_string($data) && !isJson($data) || (!is_string($data) && !is_object($data) && !is_array($data))) {
+            return '"'.$data.'"';
+        }
+
+        if (!is_string($data)) {
+            $data = json_encode($data);
+        }
+
+        $return = '';
+        $spaces = $step * 4;
+        $dataObject = json_decode($data);
+
+        if (is_object($dataObject)) {
+            $dataArray = json_decode(json_encode($dataObject), true);
+
+            $return .= "{".$br;
+            $inputs = [];
+            foreach ($dataArray as $key => $value) {
+                $input = '';
+                $input .= addSpacesString($input, $spaces);
+
+                if (is_array($dataObject->$key) || is_object($dataObject->$key)) {
+                    $input .= '"'.$key.'": '.formatJsonString($value, ($step + 1), $br);
+                    $inputs[] = $input;
+                    continue;
+                }
+
+                if (is_bool($value)) {
+                    $value = $value ? 'true' : 'false';
+                } else if (!is_null($value)) {
+                    if ((int)$value == $value) {
+                        $value = (int)$value;
+                    } else if ((float)$value == $value) {
+                        $value = (float)$value;
+                    } else {
+                        $value = '"'.$value.'"';
+                    }
+                } else {
+                    $value = 'null';
+                }
+
+                $input .= '"'.$key.'": '.$value;
+                $inputs[] = $input;
+            }
+            $return .= implode(','.$br, $inputs);
+            $return .= $br;
+            $return = addSpacesString($return, ($spaces - 4));
+            $return .= "}";
+        } else if (is_array($dataObject)) {
+            $return .= "[".$br;
+            $inputs = [];
+            foreach ($dataObject as $value) {
+                $input = '';
+                $input .= addSpacesString($input, $spaces);
+                $input .= formatJsonString($value, ($step + 1), $br);
+                $inputs[] = $input;
+            }
+            $return .= implode(','.$br, $inputs);
+            $return .= $br;
+            $return = addSpacesString($return, ($spaces - 4));
+            $return .= "]";
+        }
+
+        return $return;
+    }
+}
+
+if (!function_exists('addSpacesString')) {
+    /**
+     * Função responsável por adicionar espaços a uma string
+     *
+     * @param string $string Texto a ser adicionado os espaços
+     * @param int $spaces Quantidade de espaços
+     *
+     * @access public
+     * @return string
+     */
+    function addSpacesString(string $string, int $spaces = 1)
+    {
+        for ($i = 1; $i <= $spaces; $i++) {
+            $string .= "&nbsp;";
+        }
+
+        return $string;
     }
 }

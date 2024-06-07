@@ -1477,3 +1477,33 @@ if (!function_exists('addSpacesString')) {
         return $string;
     }
 }
+
+if (!function_exists('gbToBytes')) {
+    /**
+     * Função responsável por converter GB para Bytes
+     *
+     * @param int $gb Valor em GB
+     *
+     * @access public
+     * @return int
+     */
+    function gbToBytes(int $gb) :int
+    {
+        return $gb * 1073741824;
+    }
+}
+
+if (!function_exists('bytesToGb')) {
+    /**
+     * Função responsável por converter Bytes para GB
+     *
+     * @param int $bytes Valor em Bytes
+     *
+     * @access public
+     * @return int
+     */
+    function bytesToGb(int $bytes) :int
+    {
+        return $bytes / 1073741824;
+    }
+}

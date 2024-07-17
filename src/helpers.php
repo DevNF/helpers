@@ -1185,7 +1185,8 @@ if (!function_exists('calculaDACMod11')) {
      * @access public
      * @return int
      */
-    function calculaDACMod11(string $input) {
+
+     function calculaDACMod11(string $input) {
         $data = str_split($input);
         $data = array_reverse($data);
         $multiplicador = 2;
@@ -1202,13 +1203,17 @@ if (!function_exists('calculaDACMod11')) {
         }
 
         $mod = $soma % 11;
-        if (in_array($mod, [0, 1])) {
-            return 0;
-        } else if ($mod == 10) {
+        $subtraction = 11 - $mod;
+
+        if (in_array($mod, [10])) {
             return 1;
         }
 
-        return 11 - $mod;
+        if (in_array($mod, [0, 1])) {
+            return 0;
+        }
+
+        return $subtraction;
     }
 }
 
@@ -1228,12 +1233,26 @@ if (!function_exists('readDigitableLine')) {
      *      'bank_code' => Código do banco de destino
      * ]
      */
-    function readDigitableLine(string $digitable_line, bool $isBarcode) :array
+    function readDigitableLine(string $digitable_line) :array
     {
-        if ($isBarcode) {
+        if(strlen($digitable_line) == 36) {
+            $digitable_line += "00000000000";
+        } else if (strlen($digitable_line) == 46) {
+            $digitable_line += "0";
+        }
+        $digitable_line = onlyNumber($digitable_line);
+
+        $isBarcode = identifyTypeBarcode($digitable_line);
+
+        if ($isBarcode === 'INVALID_TYPE') {
+            return [
+                'status' => false,
+                'msg' => 'Tipo de boleto inválido'
+            ];
+        }
+
+        if ($isBarcode === 'BAR_CODE') {
             $digitable_line = formatBarcodeToDigitableLine($digitable_line);
-        } else {
-            $digitable_line = onlyNumber($digitable_line);
         }
 
         $type = '';
@@ -1272,7 +1291,9 @@ if (!function_exists('readDigitableLine')) {
             if ((float)substr($campoD, 4, 8).'.'.substr($campoD, 9) > 0) {
                 $valor = substr($campoD, 4, 8).'.'.substr($campoD, 12);
             }
-        } else {
+        }
+
+        if($type === 'consumo') {
             $campoA = substr($digitable_line, 0, 11);
             $campoB = substr($digitable_line, 12, 11);
             $campoC = substr($digitable_line, 24, 11);
@@ -1283,7 +1304,6 @@ if (!function_exists('readDigitableLine')) {
             $digitoD = (int)substr($digitable_line, 47, 1);
             $digitoGeral = (int)substr($digitable_line, 3, 1);
             $codBarra = $campoA.$campoB.$campoC.$campoD;
-
             if (substr($campoD, 0, 4) != 0) {
                 $vencimento = calculaVencimentoDigitableLine(substr($campoD, 0, 4));
             }
@@ -1292,25 +1312,62 @@ if (!function_exists('readDigitableLine')) {
             }
         }
 
-        if ($digitoA != calculaDACMod10($campoA) || $digitoB != calculaDACMod10($campoB) || $digitoC != calculaDACMod10($campoC) || ($type === 'bancario' && $digitoGeral != calculaDACMod11(substr($digitable_line, 0, 4).$campoD.substr($campoA, 4).$campoB.$campoC))) {
-            return [
-                'status' => false,
-                'error' => 'Número do boleto é inválido!'
-            ];
+        if ($type === 'bancario') {
+            if($digitoA != calculaDACMod10($campoA) ||
+            $digitoB != calculaDACMod10($campoB) ||
+            $digitoC != calculaDACMod10($campoC) &&
+            ($digitoGeral != calculaDACMod11(substr($digitable_line, 0, 4).$campoD.substr($campoA, 4).$campoB.$campoC))) {
+                return [
+                    'status' => false,
+                    'error' => 'Número do boleto é inválido!'
+                ];
+            }
         }
 
+        if ($type === 'consumo')
+        {
+            $shoudlUseMod10 = in_array(substr($campoA, 2, 1), ['6', '7']);
+            $shoudlUseMod11 = in_array(substr($campoA, 2, 1), ['8', '9']);
 
-        if ($type === 'consumo' && ((($digitoD != calculaDACMod10($campoD) || in_array(substr($campoA, 2, 1), ['6', '7'])) && $digitoGeral != calculaDACMod10(substr($campoA, 0, 3).substr($campoA, 4).$campoB.$campoC.$campoD)) || (in_array(substr($campoA, 2, 1), ['8', '9']) && $digitoGeral != calculaDACMod11(substr($campoA, 0, 3).substr($campoA, 4).$campoB.$campoC.$campoD)))) {
-            return [
-                'status' => false,
-                'error' => 'Número do boleto é inválido!'
-            ];
+            if ($shoudlUseMod10) {
+                $calcDigitoD = calculaDACMod10($campoD);
+            } else if($shoudlUseMod11){
+                $calcDigitoD = calculaDACMod11($campoD);
+            } else {
+                return [
+                    'status' => false,
+                    'error' => 'Número do boleto é inválido!'
+                ];
+            }
+
+            if($shoudlUseMod10) {
+                if($digitoA != calculaDACMod10($campoA) ||
+                    $digitoB != calculaDACMod10($campoB) ||
+                    $digitoC != calculaDACMod10($campoC) ||
+                    $digitoD != calculaDACMod10($campoD)) {
+                        return [
+                            'status' => false,
+                            'error' => 'Número do boleto é inválido!'
+                        ];
+                    }
+            } else if($shoudlUseMod11) {
+                if($digitoA != calculaDACMod11($campoA) ||
+                $digitoB != calculaDACMod11($campoB) ||
+                $digitoC != calculaDACMod11($campoC) ||
+                $digitoD != calculaDACMod11($campoD)) {
+                    return [
+                        'status' => false,
+                        'error' => 'Número do boleto é inválido!'
+                    ];
+                }
+            }
         }
 
         return [
             'status' => true,
             'data' => [
                 'type' => substr($codBarra, 0, 1) != '8' ? 1 : 2,
+                'category' => boletoCategory($codBarra),
                 'barcode' => $codBarra,
                 'value' => (float)$valor,
                 'due_date' => $vencimento,
@@ -1348,7 +1405,6 @@ if (!function_exists('formatBarcodeToDigitableLine')) {
 
         $campoA = $campoB = $campoC = $campoD = $digitable_line = '';
         $digitoA = $digitoB = $digitoC = $digitoD = $digitoGeral = 0;
-
         if ($type === 'bancario') {
             $campoA = substr($barcode, 0, 4).substr($barcode, 19, 5);
             $campoB = substr($barcode, 24, 10);
@@ -1367,10 +1423,25 @@ if (!function_exists('formatBarcodeToDigitableLine')) {
             $campoC = substr($barcode, 22, 11);
             $campoD = substr($barcode, 33);
 
-            $digitoA = calculaDACMod10($campoA);
-            $digitoB = calculaDACMod10($campoB);
-            $digitoC = calculaDACMod10($campoC);
-            $digitoD = calculaDACMod10($campoD);
+            $shoudlUseMod10 = in_array(substr($campoA, 2, 1), ['6', '7']);
+            $shoudlUseMod11 = in_array(substr($campoA, 2, 1), ['8', '9']);
+
+            if($shoudlUseMod10) {
+                $digitoA = calculaDACMod10($campoA);
+                $digitoB = calculaDACMod10($campoB);
+                $digitoC = calculaDACMod10($campoC);
+                $digitoD = calculaDACMod10($campoD);
+            } else if($shoudlUseMod11) {
+                $digitoA = calculaDACMod11($campoA);
+                $digitoB = calculaDACMod11($campoB);
+                $digitoC = calculaDACMod11($campoC);
+                $digitoD = calculaDACMod11($campoD);
+            } else {
+                return [
+                    'status' => false,
+                    'msg' => 'Código de barras inválido'
+                ];
+            }
 
             $digitable_line = $campoA.$digitoA.$campoB.$digitoB.$campoC.$digitoC.$campoD.$digitoD;
         }
@@ -1507,3 +1578,78 @@ if (!function_exists('bytesToGb')) {
         return $bytes / 1073741824;
     }
 }
+
+if (!function_exists('identifyTypeBarcode')) {
+    /**
+     * Função responsável por identificar o tipo de código de barras
+     *
+     * @param string $barcode Código de barras
+     *
+     * @access public
+     * @return string|bool
+     */
+    function identifyTypeBarcode(string $barcode) :string|bool
+    {
+        $type = 'INVALID_TYPE';
+        $barcode = onlyNumber($barcode);
+
+        if (strlen($barcode) === 44) {
+            $type = 'BAR_CODE';
+        } else if (
+            strlen($barcode) === 46 ||
+            strlen($barcode) === 47 ||
+            strlen($barcode) === 48
+        ) {
+            $type = 'DIGITABLE_LINE';
+        }
+
+        return $type;
+    }
+}
+
+if (!function_exists('boletoCategory')) {
+    /**
+     * Função responsável por identificar o categoria do boleto
+     *
+     * @param string $barcode Código de barras
+     *
+     * @access public
+     * @return string|bool
+     */
+    function boletoCategory(string $barcode) :string|bool
+    {
+        $barcode = onlyNumber($barcode);
+        $type = identifyTypeBarcode($barcode);
+
+        if ($type === 'INVALID_TYPE') {
+            return false;
+        }
+
+        if ($type === 'BAR_CODE') {
+            $barcode = formatBarcodeToDigitableLine($barcode);
+        }
+
+        if (substr($barcode, -14) == "00000000000000" || substr($barcode, 5, 14) == "00000000000000") {
+            return "CARTAO_DE_CREDITO";
+        } else if (substr($barcode, 0, 1) == "8") {
+            if (substr($barcode, 1, 1) == "1") {
+                return "ARRECADACAO_PREFEITURA";
+            } else if (substr($barcode, 1, 1) == "2") {
+                return "CONVENIO_SANEAMENTO";
+            } else if (substr($barcode, 1, 1) == "3") {
+                return "CONVENIO_ENERGIA_ELETRICA_E_GAS";
+            } else if (substr($barcode, 1, 1) == "4") {
+                return "CONVENIO_TELECOMUNICACOES";
+            } else if (substr($barcode, 1, 1) == "5") {
+                return "ARRECADACAO_ORGAOS_GOVERNAMENTAIS";
+            } else if (substr($barcode, 1, 1) == "6" || substr($barcode, 1, 1) == "9") {
+                return "OUTROS";
+            } else if (substr($barcode, 1, 1) == "7") {
+                return "ARRECADACAO_TAXAS_DE_TRANSITO";
+            }
+        }
+        
+        return "BANCO";
+    }
+}
+

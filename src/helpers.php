@@ -1304,9 +1304,7 @@ if (!function_exists('readDigitableLine')) {
             $digitoD = (int)substr($digitable_line, 47, 1);
             $digitoGeral = (int)substr($digitable_line, 3, 1);
             $codBarra = $campoA.$campoB.$campoC.$campoD;
-            if (substr($campoD, 0, 4) != 0) {
-                $vencimento = calculaVencimentoDigitableLine(substr($campoD, 0, 4));
-            }
+
             if ((float)(substr($campoD, 4, 8).'.'.substr($campoD, 9)) > 0) {
                 $valor = substr($codBarra, 4, 9).'.'.substr($codBarra, 13, 2);
             }
@@ -1370,8 +1368,8 @@ if (!function_exists('readDigitableLine')) {
                 'category' => boletoCategory($codBarra),
                 'barcode' => $codBarra,
                 'value' => (float)$valor,
-                'due_date' => $vencimento,
-                'bank_code' => substr($codBarra, 0, 3)
+                'due_date' => $type === 'bancario' ? $vencimento : '',
+                'bank_code' => substr($codBarra, 0, 3),
             ]
         ];
     }

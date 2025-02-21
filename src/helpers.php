@@ -1112,8 +1112,8 @@ if (!function_exists('calculaVencimentoDigitableLine')) {
      */
     function calculaVencimentoDigitableLine($days) :string
     {
-        $baseBACEN = strtotime('1997-10-07');
-        return date('Y-m-d', ($baseBACEN + (+$days+1) * 24 * 3600));
+        $baseBACEN = strtotime('2025-02-22');
+        return date('Y-m-d', $baseBACEN + ($days - 1000) * 86400);
     }
 }
 

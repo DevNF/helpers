@@ -23,12 +23,12 @@ final class Boleto extends TestCase
             'data' => [
                 'type' => 1,
                 'category' => 'BANCO',
-                'barcode' => '10499898100000214032006561000100040099726390',
-                'value' => 214.03,
-                'due_date' => '2022-05-10',
-                'bank_code' => '104',
+                'barcode' => '34193105600000899001090002312490241396605000',
+                'value' => 899.0,
+                'due_date' => '2025-04-19',
+                'bank_code' => '341',
             ]
-        ], readDigitableLine('10499898100000214032006561000100040099726390'));
+        ], readDigitableLine('34193105600000899001090002312490241396605000'));
     }
 
     public function testBoletoLinhaDigitavelBancoDe5Campos()
@@ -38,12 +38,12 @@ final class Boleto extends TestCase
             'data' => [
                 'type' => 1,
                 'category' => 'BANCO',
-                'barcode' => '10499898100000214032006561000100040099726390',
-                'value' => 214.03,
-                'due_date' => '2022-05-10',
-                'bank_code' => '104',
+                'barcode' => '34193105600000899001090002312490241396605000',
+                'value' => 899.0,
+                'due_date' => '2025-04-19',
+                'bank_code' => '341',
             ]
-        ], readDigitableLine('10492006506100010004200997263900989810000021403'));
+        ], readDigitableLine('34191090080231249024213966050000310560000089900'));
     }
 
     public function testBoletoCartaoDeCreditoCodigoDeBarras()
@@ -83,12 +83,12 @@ final class Boleto extends TestCase
             'data' => [
                 'type' => 2,
                 'category' => 'CONVENIO_ENERGIA_ELETRICA_E_GAS',
-                'barcode' => '83860000005096000190000008017823000034306271',
-                'value' => 509.6,
-                'due_date' => '1997-10-11',
-                'bank_code' => '838',
+                'barcode' => '83640000000206701372025030500479102280030194',
+                'value' => 20.67,
+                'due_date' => '',
+                'bank_code' => '836',
             ]
-        ], readDigitableLine('83860000005096000190000008017823000034306271'));
+        ], readDigitableLine('83640000000206701372025030500479102280030194'));
     }
 
     public function testBoletoConcessionariaEnergiaLinhaDigitavel()
@@ -98,12 +98,12 @@ final class Boleto extends TestCase
             'data' => [
                 'type' => 2,
                 'category' => 'CONVENIO_ENERGIA_ELETRICA_E_GAS',
-                'barcode' => '83860000005096000190000008017823000034306271',
-                'value' => 509.6,
-                'due_date' => '1997-10-11',
-                'bank_code' => '838',
+                'barcode' => '83640000000206701372025030500479102280030194',
+                'value' => 20.67,
+                'due_date' => '',
+                'bank_code' => '836',
             ]
-        ], readDigitableLine('838600000050096000190009000801782309000343062712'));
+        ], readDigitableLine('836400000003206701372024503050047912022800301941'));
     }
 
     public function testBoletoConcessionariaGovernoLinhaDigitavel() {
@@ -114,7 +114,7 @@ final class Boleto extends TestCase
                 'category' => 'ARRECADACAO_ORGAOS_GOVERNAMENTAIS',
                 'barcode' => '85890000464524601791606075930508683148300001',
                 'value' => 46452.46,
-                'due_date' => '2020-07-12',
+                'due_date' => '',
                 'bank_code' => '858',
             ]
         ], readDigitableLine('858900004641524601791605607593050865831483000010'));
@@ -128,7 +128,7 @@ final class Boleto extends TestCase
                 'category' => 'ARRECADACAO_ORGAOS_GOVERNAMENTAIS',
                 'barcode' => '85890000464524601791606075930508683148300001',
                 'value' => 46452.46,
-                'due_date' => '2020-07-12',
+                'due_date' => '',
                 'bank_code' => '858',
             ]
         ], readDigitableLine('85890000464524601791606075930508683148300001'));

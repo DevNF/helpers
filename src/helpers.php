@@ -18,6 +18,235 @@ if (!function_exists('onlyNumber')) {
     }
 }
 
+if (!function_exists('onlyCpfCnpj')) {
+    /**
+     * Função responsável por retornar apenas os caracteres válidos de um CPF/CNPJ (dígitos e letras maiúsculas)
+     *
+     * Deve ser utilizada em lugar de onlyNumber() em qualquer campo de CPF/CNPJ, pois o CNPJ
+     * alfanumérico (IN RFB 2.229/2024) aceita letras nas 12 primeiras posições
+     *
+     * @param string $value Texto a ser formatado
+     *
+     * @access public
+     * @return string|null
+     */
+    function onlyCpfCnpj($value)
+    {
+        $value = preg_replace("/[^0-9A-Z]/", "", strtoupper((string)$value));
+        return !empty($value) ? $value : null;
+    }
+}
+
+if (!function_exists('cnpjCharValue')) {
+    /**
+     * Função responsável por converter um caractere de CNPJ em seu valor para o cálculo do DV
+     *
+     * Conforme o Manual de Cálculo do DV do CNPJ Alfanumérico (Receita Federal), o valor de cada
+     * caractere é o seu código ASCII subtraído de 48 ('0' => 0, '9' => 9, 'A' => 17, 'Z' => 42)
+     *
+     * @param string $char Caractere a ser convertido
+     *
+     * @access public
+     * @return int
+     */
+    function cnpjCharValue(string $char) :int
+    {
+        return ord(strtoupper($char)) - 48;
+    }
+}
+
+if (!function_exists('calcCnpjDv')) {
+    /**
+     * Função responsável por calcular os dois dígitos verificadores de um CNPJ (numérico ou alfanumérico)
+     *
+     * @param string $value CNPJ com ou sem os dígitos verificadores (as 12 primeiras posições são utilizadas)
+     *
+     * @access public
+     * @return string|null Os dois dígitos verificadores, ou null caso a base seja inválida
+     */
+    function calcCnpjDv(string $value)
+    {
+        $base = substr((string)onlyCpfCnpj($value), 0, 12);
+
+        if (strlen($base) !== 12) {
+            return null;
+        }
+
+        $digits = '';
+        foreach ([[5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2], [6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]] as $weights) {
+            $sum = 0;
+            foreach ($weights as $position => $weight) {
+                $sum += cnpjCharValue($base[$position]) * $weight;
+            }
+
+            $rest = $sum % 11;
+            $digit = $rest < 2 ? 0 : 11 - $rest;
+
+            $digits .= $digit;
+            $base .= $digit;
+        }
+
+        return $digits;
+    }
+}
+
+if (!function_exists('isValidCnpj')) {
+    /**
+     * Função responsável por validar um CNPJ, numérico ou alfanumérico
+     *
+     * @param string $value Número do CNPJ
+     *
+     * @access public
+     * @return bool
+     */
+    function isValidCnpj($value) :bool
+    {
+        $value = (string)onlyCpfCnpj($value);
+
+        /**Mantém a tolerância a CNPJs numéricos que perderam os zeros à esquerda */
+        if (ctype_digit($value) && strlen($value) < 14) {
+            $value = str_pad($value, 14, '0', STR_PAD_LEFT);
+        }
+
+        if (strlen($value) !== 14) {
+            return false;
+        }
+
+        /**Os dois dígitos verificadores são sempre numéricos */
+        if (!ctype_digit(substr($value, 12, 2))) {
+            return false;
+        }
+
+        /**Aceita a sequência 99999999999999 como válida para clientes do exterior */
+        if ($value === '99999999999999') {
+            return true;
+        }
+
+        /**Rejeita sequências de um único caractere repetido */
+        if (preg_match('/^(.)\1{13}$/', $value)) {
+            return false;
+        }
+
+        return substr($value, 12, 2) === calcCnpjDv($value);
+    }
+}
+
+if (!function_exists('isValidCpf')) {
+    /**
+     * Função responsável por validar um CPF
+     *
+     * @param string $value Número do CPF
+     *
+     * @access public
+     * @return bool
+     */
+    function isValidCpf($value) :bool
+    {
+        $value = (string)onlyNumber($value);
+        $value = str_pad($value, 11, '0', STR_PAD_LEFT);
+
+        if (strlen($value) !== 11 || preg_match('/^(\d)\1{10}$/', $value)) {
+            return false;
+        }
+
+        for ($t = 9; $t < 11; $t++) {
+            for ($d = 0, $c = 0; $c < $t; $c++) {
+                $d += $value[$c] * (($t + 1) - $c);
+            }
+
+            $d = ((10 * $d) % 11) % 10;
+
+            if ($value[$c] != $d) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+}
+
+if (!function_exists('isValidCpfCnpj')) {
+    /**
+     * Função responsável por validar um CPF ou CNPJ dependendo do seu tamanho
+     *
+     * @param string $value Número do CPF ou CNPJ
+     *
+     * @access public
+     * @return bool
+     */
+    function isValidCpfCnpj($value) :bool
+    {
+        $value = (string)onlyCpfCnpj($value);
+
+        if (strlen($value) === 11) {
+            return isValidCpf($value);
+        }
+
+        if (strlen($value) === 14) {
+            return isValidCnpj($value);
+        }
+
+        return false;
+    }
+}
+
+if (!function_exists('isCnpjAlfanumerico')) {
+    /**
+     * Função responsável por verificar se um CNPJ possui letras em sua composição
+     *
+     * Útil para bloquear o envio do documento a integrações que só aceitam CNPJ numérico
+     * (Ex.: CNAB, código de barras de boleto, chave Pix)
+     *
+     * @param string $value Número do CNPJ
+     *
+     * @access public
+     * @return bool
+     */
+    function isCnpjAlfanumerico($value) :bool
+    {
+        return !ctype_digit((string)onlyCpfCnpj($value));
+    }
+}
+
+if (!function_exists('onlyDfeKey')) {
+    /**
+     * Função responsável por normalizar uma chave de acesso de DF-e
+     *
+     * Remove o prefixo alfabético do atributo Id (Ex.: "NFe35...", "CTe35...") e a máscara,
+     * preservando as letras do CNPJ alfanumérico presentes na própria chave
+     *
+     * @param string $value Chave de acesso ou atributo Id
+     *
+     * @access public
+     * @return string
+     */
+    function onlyDfeKey($value) :string
+    {
+        $value = preg_replace('/^(NFe|NFCe|CTe|MDFe|BPe|NFSe)/i', '', trim((string)$value));
+
+        return preg_replace('/[^0-9A-Z]/', '', strtoupper($value));
+    }
+}
+
+if (!function_exists('isValidDfeKey')) {
+    /**
+     * Função responsável por validar uma chave de acesso de DF-e
+     *
+     * A chave mantém as 44 posições, sendo as 12 primeiras posições do CNPJ do emitente
+     * alfanuméricas (NT Conjunta DF-e 2025.001). Os dígitos verificadores do CNPJ e o cDV
+     * continuam numéricos
+     *
+     * @param string $value Chave de acesso
+     *
+     * @access public
+     * @return bool
+     */
+    function isValidDfeKey($value) :bool
+    {
+        return (bool)preg_match('/^[0-9]{6}[A-Z0-9]{12}[0-9]{26}$/', onlyDfeKey($value));
+    }
+}
+
 if (!function_exists('formatCpf')) {
     /**
      * Função responsável por formatar um número como um CPF (Ex.: 000.000.000-00)
@@ -45,9 +274,10 @@ if (!function_exists('formatCpf')) {
 
 if (!function_exists('formatCnpj')) {
     /**
-     * Função responsável por formatar um número como um CNPJ (Ex.: 00.000.000/0001-00)
+     * Função responsável por formatar um número como um CNPJ (Ex.: 00.000.000/0001-00 / AB.CDE.FGH/IJKL-00)
      *
      * @param string $value Número do CNPJ
+     * @param bool $onlyNumber Flag para eliminar a máscara antes de formatar (mantém letras, pois o CNPJ pode ser alfanumérico)
      *
      * @access public
      * @return string
@@ -55,7 +285,7 @@ if (!function_exists('formatCnpj')) {
     function formatCnpj($value, bool $onlyNumber = true) :string
     {
         if ($onlyNumber) {
-            $value = onlyNumber($value);
+            $value = onlyCpfCnpj($value);
         }
 
         $value = substr($value, 0, 14);
@@ -80,7 +310,7 @@ if (!function_exists('formatCpfCnpj')) {
     function formatCpfCnpj($value, bool $onlyNumber = true) :string
     {
         if ($onlyNumber) {
-            $value = onlyNumber($value);
+            $value = onlyCpfCnpj($value);
         }
 
         if (strlen($value) <= 11) {
